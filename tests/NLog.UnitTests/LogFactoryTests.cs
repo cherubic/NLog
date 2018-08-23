@@ -36,7 +36,6 @@ namespace NLog.UnitTests
     using System;
     using System.IO;
     using System.Threading;
-    using System.Reflection;
     using NLog.Config;
     using Xunit;
 
@@ -164,7 +163,7 @@ namespace NLog.UnitTests
                 if (testChanged != null)
                     LogManager.LogFactory.ConfigurationChanged -= testChanged;
             }
-       }
+        }
 
         private class ReloadNullConfiguration : LoggingConfiguration
         {
@@ -321,6 +320,36 @@ namespace NLog.UnitTests
             Assert.False(factory.IsLoggingEnabled());
             factory.ResumeLogging();
             Assert.True(factory.IsLoggingEnabled());
+        }
+
+
+        [Theory]
+        [InlineData("d:\\configfile", "d:\\configfile", "d:\\configfile")]
+        [InlineData("nlog.config", "c:\\temp\\nlog.config", "c:\\temp\\nlog.config")] //exists
+        [InlineData("nlog.config", "c:\\temp\\nlog2.config", "nlog.config")] //not existing, fallback
+        public void GetConfigFile_absolutePath_loads(string filename, string accepts, string expected, string baseDir = "c:\\temp")
+        {
+            // Arrange
+            var fileMock = new FileMock(f => f == accepts);
+            var factory = new LogFactory(null, fileMock);
+            var appDomain = LogFactory.CurrentAppDomain;
+
+            try
+            {
+                LogFactory.CurrentAppDomain = new AppDomainMock(baseDir);
+
+                // Act
+                var result = factory.GetConfigFile(filename);
+
+                // Assert
+                Assert.Equal(expected, result);
+            }
+            finally
+            {
+                //restore
+                LogFactory.CurrentAppDomain = appDomain;
+            }
+
         }
     }
 }
